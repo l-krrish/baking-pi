@@ -1,8 +1,5 @@
 ARMGNU ?= arm-none-eabi
 
-COPS = -Wall -nostdlib -nostartfiles -ffreestanding
-ASMOPS = -Iinclude
-
 BUILD = build/
 SOURCE = source/
 
@@ -15,6 +12,9 @@ clean:
 $(BUILD)main.o: $(SOURCE)main.s
 	$(ARMGNU)-as -I $(SOURCE) $(SOURCE)main.s -o $(BUILD)main.o
 
-kernel.img: $(BUILD)main.o
-	$(ARMGNU)-ld --no-undefined $(BUILD)main.o -o $(BUILD)output.elf -T kernel.ld
+$(BUILD)gpio.o: $(SOURCE)gpio.s
+	$(ARMGNU)-as -I $(SOURCE) $(SOURCE)gpio.s -o $(BUILD)gpio.o
+
+kernel.img: $(BUILD)main.o $(BUILD)gpio.o
+	$(ARMGNU)-ld --no-undefined $(BUILD)main.o $(BUILD)gpio.o -o $(BUILD)output.elf -T kernel.ld
 	$(ARMGNU)-objcopy $(BUILD)output.elf -O binary kernel.img
