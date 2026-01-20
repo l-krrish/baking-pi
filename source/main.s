@@ -7,47 +7,56 @@ _start:
 main:
     mov sp,#0x8000
 
-    @ Set GPIO 16 to output
-    pinNum .req r0
-    pinFunc .req r1
-    mov pinNum,#16
-    mov pinFunc,#1
-    bl SetGpioFunction
-    .unreq pinNum
-    .unreq pinFunc
+    @ Initialize frame buffer (1024x768, 16-bit color)
+    mov r0,#1024
+    mov r1,#768
+    mov r2,#16
+    bl InitialiseFrameBuffer
 
-    @ Load the pattern
-    ptrn .req r4
-    ldr ptrn,=pattern
-    ldr ptrn,[ptrn]
-    seq .req r5
-    mov seq,#0
+    @ Check if frame buffer initialization failed
+    teq r0,#0
+    bne noError$
 
-loop$:
-    @ Calculate if LED should be on or off
+    @ If failed, turn on LED and loop forever
+    mov r0,#16
     mov r1,#1
-    lsl r1,seq
-    and r1,ptrn
-
-    @ Set LED based on pattern bit
-    pinNum .req r0
-    pinVal .req r1
-    mov pinNum,#16
+    bl SetGpioFunction
+    mov r0,#16
+    mov r1,#0
     bl SetGpio
-    .unreq pinNum
-    .unreq pinVal
 
-    @ Wait 250,000 microseconds (0.25 seconds)
-    ldr r0,=250000
-    bl Wait
+error$:
+    b error$
 
-    @ Increment sequence and wrap at 32
-    add seq,#1
-    and seq,#31
+noError$:
+    fbInfoAddr .req r4
+    mov fbInfoAddr,r0
 
-    b loop$
+render$:
+    fbAddr .req r3
+    ldr fbAddr,[fbInfoAddr,#32]
 
-.section .data
-.align 2
-pattern:
-.int 0b11111111101010100010001000101010
+    colour .req r0
+    y .req r1
+    mov y,#768
+    drawRow$:
+
+        x .req r2
+        mov x,#1024
+        drawPixel$:
+
+            strh colour,[fbAddr]
+            add fbAddr,#2
+            sub x,#1
+            teq x,#0
+            bne drawPixel$
+
+        sub y,#1
+        add colour,#1
+        teq y,#0
+        bne drawRow$
+
+    b render$
+
+.unreq fbAddr
+.unreq fbInfoAddr
